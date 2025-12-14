@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sistema de Puntos</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+    <meta name="theme-color" content="#4CAF50">
+</head>
+<body>
+    <div id="app">
+        <!-- Header Fijo -->
+        <header class="app-header">
+            <div class="user-info">
+                <span id="user-name">Campeón</span>
+                <span class="balance-badge">💰 <span id="header-balance">0</span> pts</span>
+            </div>
+            <div class="status-bar">
+                <span>⏰ Pantalla hoy: <span id="header-screen-time">0</span>/90 min</span>
+            </div>
+        </header>
+
+        <!-- Contenido Principal (Vistas) -->
+        <main class="app-content">
+            
+            <!-- VISTA 1: HOY (Tareas) -->
+            <section id="view-today" class="view active">
+                <h2>📅 Tareas de Hoy</h2>
+                <div id="task-list" class="card-list">
+                    <!-- Las tareas se inyectarán aquí -->
+                </div>
+            </section>
+
+            <!-- VISTA 2: RECOMPENSAS -->
+            <section id="view-rewards" class="view hidden">
+                <h2>🎁 Canjear Puntos</h2>
+                <div class="balance-large">
+                    💎 Saldo: <span id="rewards-balance">0</span> puntos
+                </div>
+                <div id="reward-list" class="card-list">
+                    <!-- Las recompensas se inyectarán aquí -->
+                </div>
+            </section>
+
+            <!-- VISTA 3: HISTORIAL -->
+            <section id="view-history" class="view hidden">
+                <h2>📊 Historial</h2>
+                <div id="history-list" class="history-list">
+                    <!-- El historial se inyectará aquí -->
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Navegación Inferior -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" onclick="showView('today')">
+                <span>📝</span>
+                <span>Hoy</span>
+            </button>
+            <button class="nav-btn" onclick="showView('rewards')">
+                <span>🎁</span>
+                <span>Canjear</span>
+            </button>
+            <button class="nav-btn" onclick="showView('history')">
+                <span>📊</span>
+                <span>Historial</span>
+            </button>
+        </nav>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('SW registrado', reg))
+                .catch(err => console.log('SW error', err));
+        }
+    </script>
+</body>
+</html>
