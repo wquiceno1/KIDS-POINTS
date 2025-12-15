@@ -1,19 +1,21 @@
 const STORAGE_KEY = "kid-points-app-state-v1";
 
 const defaultState = {
-    version: "1.0.0",
-    child: { id: "main-child", name: "Campeón", age: 8 },
+    version: "1.0.1",
+    child: { id: "main-child", name: "Celeste", age: 8 },
     tasks: [
         { id: "cuarto", name: "Organizar cuarto", points: 10, category: "casa", active: true },
         { id: "banarse", name: "Bañarse + aseo completo", points: 10, category: "higiene", active: true },
-        { id: "ropa-interior", name: "Lavar ropa interior", points: 5, category: "higiene", active: true },
-        { id: "tablas", name: "Cada tabla multiplicar", points: 5, category: "estudio", active: true },
+        { id: "ropa-interior", name: "Lavar ropa interior", points: 10, category: "higiene", active: true },
+        { id: "tablas", name: "Repasar las tablas", points: 10, category: "estudio", active: true },
+        { id: "tablas", name: "Leer 30 minutos", points: 10, category: "estudio", active: true },
         { id: "platos-propios", name: "Lavar platos propios", points: 5, category: "casa", active: true },
         { id: "todos-platos", name: "Lavar todos los platos", points: 15, category: "casa", active: true }
     ],
     rewards: [
         { id: "screen", name: "Minutos pantalla", type: "screen-time", costPoints: 1, unit: "minute" },
-        { id: "comida", name: "Elegir comida", type: "experience", costPoints: 40, unit: "event" }
+        { id: "comida", name: "Comida Chatarra", type: "experience", costPoints: 40, unit: "event" },
+        { id: "comida", name: "Un Helado", type: "experience", costPoints: 50, unit: "event" }
     ],
     transactions: [],
     settings: {
@@ -32,8 +34,24 @@ function loadState() {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
+            const savedState = JSON.parse(raw);
             console.log('Estado cargado desde LocalStorage');
-            return JSON.parse(raw);
+            
+            // Verificación de versión para actualizar definiciones
+            if (savedState.version !== defaultState.version) {
+                console.log(`Versión detectada (${savedState.version}) es antigua. Actualizando a ${defaultState.version}...`);
+                
+                // Actualizar tareas y recompensas (manteniendo transacciones y configuración)
+                savedState.tasks = defaultState.tasks;
+                savedState.rewards = defaultState.rewards;
+                savedState.version = defaultState.version;
+                
+                // Guardar el estado actualizado inmediatamente
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(savedState));
+                return savedState;
+            }
+            
+            return savedState;
         }
     } catch (e) {
         console.error('Error cargando estado:', e);
@@ -110,18 +128,22 @@ function completeTask(taskId) {
     updateUI(); // Se implementará más adelante
 }
 
-function redeemReward(rewardId) {
+function redeemReward(rewardId, amount = null) {
     const reward = state.rewards.find(r => r.id === rewardId);
     if (!reward) {
         console.error(`Recompensa ${rewardId} no encontrada`);
         return;
     }
 
+    // Determinar el costo real
+    const cost = amount ? amount : reward.costPoints;
+    const description = amount ? `${reward.name} (${amount} min)` : reward.name;
+
     const currentBalance = getBalance();
     
     // Validación 1: Saldo suficiente
-    if (currentBalance < reward.costPoints) {
-        alert(`No tienes suficientes puntos. Necesitas ${reward.costPoints}, tienes ${currentBalance}.`);
+    if (currentBalance < cost) {
+        alert(`No tienes suficientes puntos. Necesitas ${cost}, tienes ${currentBalance}.`);
         return;
     }
 
@@ -130,9 +152,9 @@ function redeemReward(rewardId) {
         const usedToday = getTodayScreenUsed();
         const maxAllowed = state.settings.dailyMaxScreenMinutes - state.settings.dailyFreeScreenMinutes; // 60 min
         
-        // Asumimos que costPoints = minutos (1 punto = 1 minuto)
-        if (usedToday + reward.costPoints > maxAllowed) {
-            alert(`Has alcanzado el límite diario de pantalla extra (${maxAllowed} min). Llevas ${usedToday} min.`);
+        // Asumimos que cost = minutos (1 punto = 1 minuto)
+        if (usedToday + cost > maxAllowed) {
+            alert(`Has alcanzado el límite diario de pantalla extra (${maxAllowed} min). Llevas ${usedToday} min. Solo puedes canjear ${maxAllowed - usedToday} más.`);
             return;
         }
     }
@@ -144,13 +166,13 @@ function redeemReward(rewardId) {
         type: "spend",
         source: "reward",
         rewardId: rewardId,
-        description: reward.name,
-        points: -reward.costPoints
+        description: description,
+        points: -cost
     };
 
     state.transactions.push(tx);
     saveState();
-    console.log(`Recompensa canjeada: ${reward.name} (-${reward.costPoints} pts)`);
+    console.log(`Recompensa canjeada: ${description} (-${cost} pts)`);
     updateUI();
 }
 
@@ -236,17 +258,42 @@ function renderRewards() {
         const canAfford = balance >= reward.costPoints;
         const card = document.createElement('div');
         card.className = 'card';
-        card.innerHTML = `
-            <div class="card-info">
-                <h3>${reward.name}</h3>
-                <p>Costo: ${reward.costPoints} pts</p>
-            </div>
-            <button class="btn-action spend" 
-                    onclick="redeemReward('${reward.id}')"
-                    ${!canAfford ? 'disabled' : ''}>
-                Canjear
-            </button>
-        `;
+        
+        // Si es recompensa de pantalla, mostrar opciones de bloques
+        if (reward.id === 'screen') {
+            card.innerHTML = `
+                <div class="card-info">
+                    <h3>${reward.name}</h3>
+                    <p>Costo: 1 pto = 1 min</p>
+                </div>
+                <div style="display:flex; gap:5px;">
+                    <button class="btn-action spend" 
+                            onclick="redeemReward('${reward.id}', 15)"
+                            ${balance < 15 ? 'disabled' : ''}>
+                        15m
+                    </button>
+                    <button class="btn-action spend" 
+                            onclick="redeemReward('${reward.id}', 30)"
+                            ${balance < 30 ? 'disabled' : ''}>
+                        30m
+                    </button>
+                </div>
+            `;
+        } else {
+            // Recompensa estándar (comida, etc)
+            card.innerHTML = `
+                <div class="card-info">
+                    <h3>${reward.name}</h3>
+                    <p>Costo: ${reward.costPoints} pts</p>
+                </div>
+                <button class="btn-action spend" 
+                        onclick="redeemReward('${reward.id}')"
+                        ${!canAfford ? 'disabled' : ''}>
+                    Canjear
+                </button>
+            `;
+        }
+        
         container.appendChild(card);
     });
 }
