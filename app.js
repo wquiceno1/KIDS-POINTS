@@ -1,16 +1,16 @@
 const STORAGE_KEY = "kid-points-app-state-v1";
 
 const defaultState = {
-    version: "1.1.0",
+    version: "1.1.1",
     child: { id: "main-child", name: "Campeón", age: 8 },
     tasks: [
-        { id: "cuarto", name: "Organizar cuarto", points: 10, category: "casa", active: true },
-        { id: "banarse", name: "Bañarse + aseo completo", points: 10, category: "higiene", active: true },
-        { id: "ropa-interior", name: "Lavar ropa interior", points: 10, category: "higiene", active: true },
-        { id: "tablas", name: "Repasar las tablas", points: 10, category: "estudio", active: true },
-        { id: "tablas", name: "Leer 30 minutos", points: 10, category: "estudio", active: true },
-        { id: "platos-propios", name: "Lavar platos propios", points: 5, category: "casa", active: true },
-        { id: "todos-platos", name: "Lavar todos los platos", points: 15, category: "casa", active: true }
+        { id: "cuarto", name: "Organizar cuarto", points: 10, category: "casa", active: true, repeatable: false },
+        { id: "banarse", name: "Bañarse + aseo completo", points: 10, category: "higiene", active: true, repeatable: false },
+        { id: "ropa-interior", name: "Lavar ropa interior", points: 10, category: "higiene", active: true, repeatable: false },
+        { id: "tablas", name: "Repasar las tablas", points: 10, category: "estudio", active: true, repeatable: false },
+        { id: "leer", name: "Leer 30 minutos", points: 10, category: "estudio", active: true, repeatable: false },
+        { id: "platos-propios", name: "Lavar platos propios", points: 5, category: "casa", active: true, repeatable: true },
+        { id: "todos-platos", name: "Lavar todos los platos", points: 15, category: "casa", active: true, repeatable: true }
     ],
     rewards: [
         { id: "screen", name: "Minutos pantalla", type: "screen-time", costPoints: 1, unit: "minute" },
@@ -25,7 +25,7 @@ const defaultState = {
         currencyName: "puntos",
         locale: "es-CO",
         theme: "system",
-        parentPin: "1234" // PIN por defecto
+        parentPin: "2018" // PIN por defecto
     }
 };
 
@@ -106,7 +106,7 @@ const Modal = {
         if (!this.elements.backdrop) this.init();
         
         return new Promise((resolve) => {
-            const { title = "Mensaje", message, type = "alert", placeholder = "" } = options;
+            const { title = "Mensaje", message, type = "alert", placeholder = "", inputType = "text" } = options;
             
             this.elements.title.textContent = title;
             this.elements.message.textContent = message;
@@ -116,6 +116,7 @@ const Modal = {
             this.elements.inputContainer.classList.add('hidden');
             this.elements.cancelBtn.classList.add('hidden');
             this.elements.input.value = '';
+            this.elements.input.type = inputType; // Set input type
 
             const close = (value) => {
                 this.elements.backdrop.classList.add('hidden');
@@ -259,7 +260,13 @@ function approveAllTasks() {
 }
 
 async function checkParentPin() {
-    const pin = await Modal.prompt("Ingresa el PIN de padres:", "Acceso Restringido");
+    const pin = await Modal.show({
+        type: "prompt",
+        title: "Acceso Restringido",
+        message: "Ingresa el PIN de padres:",
+        inputType: "password"
+    });
+    
     if (pin === state.settings.parentPin) {
         showParentView();
     } else if (pin !== null) {
@@ -275,7 +282,7 @@ function renderPendingTasks() {
     const container = document.getElementById('pending-list');
     if (!container) return;
     
-    const pendingTxs = state.transactions.filter(t => t.status === 'pending');
+    const pendingTxs = state.transactions.filter(t => t.status === 'pending' && !t.isReset);
     
     if (pendingTxs.length === 0) {
         container.innerHTML = '<div class="empty-state"><p>No hay tareas pendientes de revisión 🎉</p></div>';
@@ -335,13 +342,34 @@ function redeemReward(rewardId, amount = null) {
         source: "reward",
         rewardId: rewardId,
         description: description,
-        points: -cost
+        points: -cost,
+        consumed: false // Estado inicial: pendiente de usar
     };
 
     state.transactions.push(tx);
     saveState();
     console.log(`Recompensa canjeada: ${description} (-${cost} pts)`);
     updateUI();
+    Modal.alert("¡Premio canjeado! Revisa tu mochila para usarlo.", "¡Felicidades!");
+}
+
+function consumeReward(txId) {
+    const tx = state.transactions.find(t => t.id === txId);
+    if (!tx) return;
+
+    Modal.show({
+        title: "Disfrutar Premio",
+        message: `¿Vas a usar "${tx.description}" ahora?`,
+        type: "confirm"
+    }).then(confirmed => {
+        if (confirmed) {
+            tx.consumed = true;
+            tx.consumedDate = new Date().toISOString();
+            saveState();
+            updateUI();
+            Modal.alert("¡Que lo disfrutes!", "Premio Usado");
+        }
+    });
 }
 
 /* --- INTERFAZ DE USUARIO (UI) --- */
@@ -384,6 +412,7 @@ function showView(viewName) {
     // Renderizar contenido específico si es necesario
     if (viewName === 'history') renderHistory();
     if (viewName === 'parent') renderPendingTasks();
+    if (viewName === 'rewards') renderActiveRewards();
 }
 
 function updateUI() {
@@ -397,7 +426,46 @@ function updateUI() {
     // Actualizar listas
     renderTasks();
     renderRewards();
+    renderActiveRewards(); // Asegurar que se actualice también
     // renderHistory se llama bajo demanda al cambiar de vista para optimizar
+}
+
+function renderActiveRewards() {
+    const container = document.getElementById('active-rewards-list');
+    const section = document.getElementById('active-rewards-section');
+    if (!container || !section) return;
+
+    container.innerHTML = '';
+    
+    // Filtrar recompensas activas (no consumidas)
+    // Ordenar: primero las más antiguas para que las gaste
+    const activeRewards = state.transactions.filter(tx => 
+        tx.type === 'spend' && 
+        tx.source === 'reward' && 
+        tx.consumed !== true
+    ).sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time));
+
+    if (activeRewards.length === 0) {
+        section.classList.add('hidden');
+        return;
+    }
+
+    section.classList.remove('hidden');
+
+    activeRewards.forEach(tx => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.style.borderColor = '#2196F3'; // Azul para diferenciar
+        
+        card.innerHTML = `
+            <div class="card-info">
+                <h3 style="color: #1565C0;">${tx.description}</h3>
+                <p style="font-size: 0.85em; color: #555;">Obtenido: ${tx.date}</p>
+            </div>
+            <button class="btn-action" style="background-color: #2196F3;" onclick="consumeReward('${tx.id}')">Usar</button>
+        `;
+        container.appendChild(card);
+    });
 }
 
 function renderTasks() {
@@ -406,27 +474,34 @@ function renderTasks() {
 
     const today = new Date().toISOString().split('T')[0];
     
-    // Obtener tareas completadas hoy
+    // Obtener IDs de tareas completadas hoy (no reseteadas)
+    // Ya no necesitamos contar, solo saber si existe al menos una vez
     const completedTaskIds = state.transactions
-        .filter(tx => tx.date === today && tx.source === "task")
+        .filter(tx => tx.date === today && tx.source === "task" && !tx.isReset)
         .map(tx => tx.taskId);
 
     state.tasks.forEach(task => {
         if (!task.active) return;
 
         const isCompleted = completedTaskIds.includes(task.id);
+        
         const card = document.createElement('div');
+        // Si está completada, siempre añadimos la clase completed (sin importar si es repetible o no)
         card.className = `card task-card ${isCompleted ? 'completed' : ''}`;
         
+        let actionButton = '';
+        if (isCompleted) {
+             actionButton = '<div class="completion-badge">✅ Hecho</div>';
+        } else {
+             actionButton = `<button class="btn-action" onclick="completeTask('${task.id}')">Hecho</button>`;
+        }
+
         card.innerHTML = `
             <div class="card-info">
                 <h3>${task.name}</h3>
                 <p>${task.category} • +${task.points} pts</p>
             </div>
-            ${isCompleted 
-                ? '<div class="completion-badge">✅ Hecho</div>' 
-                : `<button class="btn-action" onclick="completeTask('${task.id}')">Hecho</button>`
-            }
+            ${actionButton}
         `;
         container.appendChild(card);
     });
@@ -513,6 +588,52 @@ function renderHistory() {
         `;
         container.appendChild(item);
     });
+}
+
+async function resetDailyTasks() {
+    // Confirmación de seguridad
+    const confirmed = await Modal.show({
+        title: "⚠️ ¿Estás seguro?",
+        message: "Esto reiniciará el estado de las tareas de hoy para que se puedan realizar nuevamente. Los puntos ganados se mantendrán.",
+        type: "confirm" // Usamos el modal estándar con cancelar
+    }).then(res => res === true); // Si da click en aceptar devuelve true
+
+    // Nota: El método show actual devuelve true/false si es tipo alert/confirm implícito
+    // Pero mi implementación de show devuelve true en confirmBtn y null en cancelBtn/backdrop
+    // Vamos a ajustar la lógica o usar un confirm explícito si fuera necesario.
+    // Revisando mi implementación de Modal.show:
+    // cancelBtn.onclick => close(null)
+    // confirmBtn.onclick => close(true)
+    // Así que si confirmed === true, procedemos.
+    
+    if (!confirmed) return;
+
+    const today = new Date().toISOString().split('T')[0];
+    let count = 0;
+    
+    // Marcamos como reseteadas las transacciones de tareas de hoy
+    state.transactions = state.transactions.map(tx => {
+        if (tx.date === today && tx.source === 'task') {
+            // Verificar si la tarea asociada es repetible
+            const task = state.tasks.find(t => t.id === tx.taskId);
+            
+            // Si la tarea existe y es repetible, la reseteamos (para borrar contador)
+            // Si la tarea NO es repetible, NO la reseteamos (se queda como "Hecho" permanentemente por hoy)
+            if (task && task.repeatable === true) {
+                count++;
+                return { ...tx, isReset: true };
+            }
+        }
+        return tx;
+    });
+
+    if (count > 0) {
+        saveState();
+        updateUI(); // Esto actualizará las listas pero mantendrá el saldo
+        Modal.alert("Las tareas han sido habilitadas nuevamente.", "Reinicio Exitoso");
+    } else {
+        Modal.alert("No había tareas registradas hoy para reiniciar.", "Información");
+    }
 }
 
 // Inicializar UI al cargar

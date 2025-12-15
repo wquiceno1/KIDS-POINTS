@@ -36,9 +36,18 @@
             <!-- VISTA 2: RECOMPENSAS -->
             <section id="view-rewards" class="view hidden">
                 <h2>🎁 Canjear Puntos</h2>
-                <div class="balance-large">
+                <div class="balance-card">
                     💎 Saldo: <span id="rewards-balance">0</span> puntos
                 </div>
+
+                <div id="active-rewards-section" class="hidden" style="margin-bottom: 25px; background: #e3f2fd; padding: 15px; border-radius: 12px;">
+                    <h3 style="margin-top: 0; color: #1976D2; font-size: 1.1rem;">🎒 Mochila de Premios</h3>
+                    <div id="active-rewards-list" class="card-list">
+                        <!-- Premios activos aquí -->
+                    </div>
+                </div>
+
+                <h3 style="margin-bottom: 10px;">Catálogo</h3>
                 <div id="reward-list" class="card-list">
                     <!-- Las recompensas se inyectarán aquí -->
                 </div>
@@ -67,6 +76,11 @@
 
                 <div id="pending-list" class="card-list">
                     <!-- Las transacciones pendientes se inyectarán aquí -->
+                </div>
+
+                <div style="margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px;">
+                    <button class="btn-action spend" style="width: 100%; background-color: #f44336;" onclick="resetDailyTasks()">🔄 Reiniciar Tareas de Hoy</button>
+                    <p style="text-align: center; color: #666; font-size: 0.9em; margin-top: 10px;">Borra el progreso del día para que el niño pueda marcar las tareas nuevamente.</p>
                 </div>
             </section>
 

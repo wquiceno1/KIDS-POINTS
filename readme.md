@@ -67,8 +67,7 @@ No requieres instalar nada en un servidor.
     *   Abre el archivo `index.html` en tu navegador.
 
 2.  **Opción B (Hosting Estático - Recomendado):**
-    *   Sube los archivos a GitHub Pages, Netlify o Vercel.
-    *   Abre la URL en tu celular.
+    *   [Abre la URL en tu celular](https://wquiceno1.github.io/KIDS-POINTS/).
     *   En el menú del navegador, selecciona **"Agregar a pantalla de inicio"** o **"Instalar App"**.
 
 ## 📝 Configuración Personalizada
