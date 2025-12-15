@@ -1,281 +1,97 @@
-# 🚀 Desarrollo Completo PWA - Sistema de Puntos para Niños
+# 🌟 Kids Points - Sistema de Recompensas
 
-## 📋 1. OBJETIVO DEL PROYECTO
+![Versión](https://img.shields.io/badge/versión-1.1.0-brightgreen)
+![Estado](https://img.shields.io/badge/estado-funcional-blue)
+![PWA](https://img.shields.io/badge/PWA-Ready-orange)
 
-**PWA responsive** que funciona en PC, celular y tablet **sin backend**.  
-Sistema de puntos para niño de 8 años: gana puntos por tareas → canjea por minutos de pantalla y recompensas.  
-**Persistencia**: LocalStorage con un único objeto JSON de estado global.
-
----
-
-## 🎯 2. REGLAS FUNCIONALES CLAVE
-
-### 💰 Moneda y límites
-1 punto = 1 minuto de pantalla extra
-30 min gratis diarios (después de almorzar + deberes)
-Máximo diario: 90 min total (30 gratis + 60 por puntos)
-Tope saldo: 180 puntos acumulados
-
-text
-
-### ✅ Tareas base (configurable)
-| Tarea                        | Puntos |
-|------------------------------|--------|
-| Organizar cuarto             | 10     |
-| Bañarse + aseo completo      | 10     |
-| Lavar ropa interior          | 5      |
-| Cada tabla multiplicar       | 5      |
-| Lavar platos propios         | 5      |
-| Lavar todos los platos       | 15     |
-
-### ⚖️ Condiciones
-- **Solo puntos por iniciativa propia** (1 recordatorio máximo)
-- Sin puntos si hay peleas/múltiples recordatorios
-- Historial completo de ganancias/gastos
+Una aplicación web progresiva (PWA) diseñada para motivar a los niños a realizar sus tareas diarias mediante un sistema de gamificación simple y efectivo. Sin servidores, sin complicaciones, todo se guarda en tu dispositivo.
 
 ---
 
-## 🏗️ 3. ARQUITECTURA TÉCNICA
+## 📱 Descripción
 
-Frontend: HTML + CSS + JS vanilla (SPA simple)
-Persistencia: LocalStorage ("kid-points-app-state-v1")
-PWA: manifest.json + Service Worker (cache offline)
-Hosting: GitHub Pages/Netlify/Vercel
+**Kids Points** es una herramienta digital que reemplaza las tablas de puntos en papel. Permite a los padres y niños llevar un registro transparente de:
+*   **Tareas completadas:** Organizar el cuarto, tareas escolares, higiene, etc.
+*   **Puntos ganados:** Cada tarea tiene un valor asignado.
+*   **Recompensas:** Los puntos se canjean principalmente por tiempo de pantalla (TV, Tablet, Videojuegos) u otros premios configurables.
 
-text
+La aplicación está diseñada con un enfoque **Mobile First**, ideal para instalarse en el celular o tablet del niño y funcionar como una app nativa.
 
----
+## ✨ Características Principales
 
-## 💾 4. MODELO DE DATOS COMPLETO
+*   **🏆 Gamificación Diaria:** Interfaz visual atractiva para marcar tareas.
+*   **💾 100% Offline:** Funciona sin internet. Los datos se guardan en el almacenamiento local del dispositivo (`LocalStorage`).
+*   **👨‍👩‍👧‍👦 Control Parental:**
+    *   Las tareas completadas requieren **aprobación** (protegida por PIN).
+    *   PIN por defecto: `1234` (Configurable en código).
+*   **🎁 Canje Inteligente:**
+    *   Sistema de bloques de 15 y 30 minutos para tiempo de pantalla.
+    *   Límites diarios automáticos (Ej: Máximo 90 min de pantalla al día).
+    *   Validación de saldo insuficiente.
+*   **📊 Historial Transparente:** Registro detallado de cada punto ganado y gastado.
+*   **� PWA Instalable:** Puedes "Instalar" la webapp en tu pantalla de inicio (Android/iOS) y usarla a pantalla completa.
 
-### AppState raíz (JSON único)
-const STORAGE_KEY = "kid-points-app-state-v1";
+## 🚀 Cómo Funciona
 
+1.  **El Niño/a:**
+    *   Entra a la app y ve sus tareas del día.
+    *   Marca las tareas que ha realizado ("Organizar cuarto", "Bañarse").
+    *   La tarea queda en estado **"En Revisión"** (borde amarillo).
+
+2.  **El Padre/Madre:**
+    *   Entra a la sección **"Padres"** (candado 🔒) e ingresa el PIN.
+    *   Revisa las tareas marcadas.
+    *   **Aprueba (✅)** si está bien hecha (los puntos se suman al saldo).
+    *   **Rechaza (❌)** si no se cumplió correctamente.
+
+3.  **Canje:**
+    *   El niño va a la pestaña **"Premios"**.
+    *   Elige su recompensa (ej: "30 min de Tablet").
+    *   Si tiene saldo y no ha superado el límite diario, se descuentan los puntos y ¡a disfrutar!
+
+## 🛠️ Tecnologías
+
+Este proyecto está construido con tecnologías web estándar, lo que garantiza rapidez, compatibilidad y cero dependencias complejas.
+
+*   **HTML5 Semántico**
+*   **CSS3 Moderno** (Variables, Flexbox, Animaciones)
+*   **JavaScript (ES6+)** Vanilla (Sin frameworks)
+*   **Service Worker:** Para capacidades offline y caché.
+
+## ⚙️ Instalación y Uso
+
+No requieres instalar nada en un servidor.
+
+1.  **Opción A (Local):**
+    *   Descarga el código.
+    *   Abre el archivo `index.html` en tu navegador.
+
+2.  **Opción B (Hosting Estático - Recomendado):**
+    *   Sube los archivos a GitHub Pages, Netlify o Vercel.
+    *   Abre la URL en tu celular.
+    *   En el menú del navegador, selecciona **"Agregar a pantalla de inicio"** o **"Instalar App"**.
+
+## 📝 Configuración Personalizada
+
+Para cambiar las tareas, los valores de puntos o el PIN, edita el archivo `app.js` en la sección `defaultState`:
+
+```javascript
 const defaultState = {
-version: "1.0.0",
-child: { id: "main-child", name: "Nombre", age: 8 },
-tasks: [
-{ id: "cuarto", name: "Organizar cuarto", points: 10, category: "casa", active: true },
-{ id: "banarse", name: "Bañarse + aseo", points: 10, category: "higiene", active: true },
-// ... más tareas
-],
-rewards: [
-{ id: "screen", name: "Minutos pantalla", type: "screen-time", costPoints: 1, unit: "minute" },
-{ id: "comida", name: "Elegir comida", type: "experience", costPoints: 40, unit: "event" }
-],
-transactions: [],
-settings: {
-dailyFreeScreenMinutes: 30,
-dailyMaxScreenMinutes: 90,
-maxPointBalance: 180,
-currencyName: "puntos",
-locale: "es-CO",
-theme: "system"
-}
+    // ...
+    child: { id: "main-child", name: "Campeón", age: 8 },
+    tasks: [
+        { id: "cuarto", name: "Organizar cuarto", points: 10 ... },
+        // Agrega o quita tareas aquí
+    ],
+    settings: {
+        maxPoints: 100,
+        parentPin: "1234" // <- Tu PIN aquí
+    }
 };
+```
 
-text
-
-### Tipos principales
-type TaskDefinition = {
-id: string; name: string; points: number;
-category: "higiene"|"estudio"|"casa"|"extra"; active: boolean;
-};
-
-type PointTransaction = {
-id: string; date: string; time: string;
-type: "earn"|"spend"|"adjust";
-source: "task"|"reward"|"manual";
-taskId?: string; rewardId?: string;
-points: number; // + earn, - spend
-};
-
-text
+*Nota: Al cambiar la versión en `app.js` (ej: de 1.1.0 a 1.1.1), el sistema actualizará automáticamente las tareas en los dispositivos donde ya se usa la app.*
 
 ---
 
-## 🚀 5. PASOS DE DESARROLLO SECUENCIAL
-
-### PASO 1: Estructura de archivos
-📁 proyecto/
-├── index.html
-├── style.css
-├── app.js
-├── manifest.json
-├── sw.js
-├── icons/
-│ ├── icon-192.png
-│ └── icon-512.png
-
-text
-
-### PASO 2: Persistencia básica
-// app.js
-const STORAGE_KEY = "kid-points-app-state-v1";
-let state = loadState();
-
-function loadState() {
-try {
-const raw = localStorage.getItem(STORAGE_KEY);
-return raw ? JSON.parse(raw) : defaultState;
-} catch {
-return defaultState;
-}
-}
-
-function saveState() {
-localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
-
-text
-
-### PASO 3: Funciones críticas
-// Cálculos
-function getBalance() {
-return state.transactions.reduce((sum, tx) => sum + tx.points, 0);
-}
-
-function completeTask(taskId) {
-const task = state.tasks.find(t => t.id === taskId && t.active);
-if (!task) return;
-
-const tx = {
-id: crypto.randomUUID(),
-date: new Date().toISOString().split('T'),
-time: new Date().toTimeString().split(' '),
-type: "earn", source: "task", taskId,
-points: task.points
-};
-
-state.transactions.push(tx);
-enforceMaxBalance();
-saveState();
-updateUI();
-}
-
-function getTodayScreenUsed() {
-const today = new Date().toISOString().split('T');
-return Math.abs(state.transactions
-.filter(tx => tx.date === today && tx.source === "reward" && tx.rewardId === "screen")
-.reduce((sum, tx) => sum + tx.points, 0));
-}
-
-text
-
-### PASO 4: Vistas SPA (navegación simple)
-const VIEWS = {
-today: document.getElementById('today-view'),
-rewards: document.getElementById('rewards-view'),
-history: document.getElementById('history-view'),
-config: document.getElementById('config-view')
-};
-
-function showView(viewName) {
-Object.values(VIEWS).forEach(v => v.classList.add('hidden'));
-VIEWS[viewName].classList.remove('hidden');
-}
-
-text
-
-### PASO 5: PWA mínima viable
-
-**manifest.json**
-{
-"name": "Sistema de Puntos",
-"short_name": "Puntos",
-"start_url": "/",
-"display": "standalone",
-"background_color": "#ffffff",
-"theme_color": "#4CAF50",
-"icons": [
-{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-{ "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
-]
-}
-
-text
-
-**sw.js (Service Worker)**
-const CACHE_NAME = 'puntos-v1';
-const urlsToCache = ['/', '/style.css', '/app.js'];
-
-self.addEventListener('install', event => {
-event.waitUntil(
-caches.open(CACHE_NAME)
-.then(cache => cache.addAll(urlsToCache))
-);
-});
-
-self.addEventListener('fetch', event => {
-event.respondWith(
-caches.match(event.request)
-.then(response => response || fetch(event.request))
-);
-});
-
-text
-
-### PASO 6: Validaciones críticas
-function canSpend(points) {
-return getBalance() >= points
-&& getTodayScreenUsed() + points <= state.settings.dailyMaxScreenMinutes - state.settings.dailyFreeScreenMinutes;
-}
-
-function enforceMaxBalance() {
-const balance = getBalance();
-if (balance > state.settings.maxPointBalance) {
-// Crear transacción de ajuste automático
-const excess = balance - state.settings.maxPointBalance;
-state.transactions.push({
-id: crypto.randomUUID(), date: new Date().toISOString().split('T'),
-time: new Date().toTimeString().split(' '), type: "adjust",
-source: "manual", description: Exceso eliminado: ${excess} puntos,
-points: -excess
-});
-}
-}
-
-text
-
----
-
-## 🎨 6. UI MOBILE-FIRST SUGERIDA
-
-┌─────────────────────────┐
-│ [Nombre] 💰 123 pts │ ← Header fijo
-│ ⏰ Hoy: 45/90 min │
-├─────────────────────────┤
-│ 📱 Hoy │ ← Botones navegación
-│ 🎁 Recompensas 📊 Hist.│
-├─────────────────────────┤
-│ ✅ Tareas del día │
-│ - Organizar cuarto [✓] │
-│ - Bañarse [ ] 10pts │
-│ │
-│ 💎 Saldo: 123 puntos │
-└─────────────────────────┘
-
-text
-
----
-
-## ✅ 7. CHECKLIST DE COMPLETUD
-
-- [ ] ✅ Estado carga/guarda correctamente
-- [ ] ✅ Tareas completan → suman puntos
-- [ ] ✅ Recompensas respetan límites
-- [ ] ✅ Historial diario/semanal
-- [ ] ✅ PWA instalable (móvil/desktop)
-- [ ] ✅ Funciona 100% offline
-- [ ] ✅ Responsive todos dispositivos
-- [ ] ✅ Español completo (es-CO)
-
----
-
-## 📦 8. DESPLIEGUE
-
-1. Subir archivos a **GitHub Pages** / **Netlify** / **Vercel**
-2. Abrir en Chrome → DevTools → Application → Install PWA
-3. Probar offline desconectando internet
-
-**¡Listo para usar en familia!** 🎉
+Hecho con ❤️ para fomentar buenos hábitos.

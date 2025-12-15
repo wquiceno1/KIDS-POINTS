@@ -1,8 +1,8 @@
 const STORAGE_KEY = "kid-points-app-state-v1";
 
 const defaultState = {
-    version: "1.0.1",
-    child: { id: "main-child", name: "Celeste", age: 8 },
+    version: "1.1.0",
+    child: { id: "main-child", name: "Campeón", age: 8 },
     tasks: [
         { id: "cuarto", name: "Organizar cuarto", points: 10, category: "casa", active: true },
         { id: "banarse", name: "Bañarse + aseo completo", points: 10, category: "higiene", active: true },
@@ -24,7 +24,8 @@ const defaultState = {
         maxPointBalance: 180,
         currencyName: "puntos",
         locale: "es-CO",
-        theme: "system"
+        theme: "system",
+        parentPin: "1234" // PIN por defecto
     }
 };
 
@@ -41,9 +42,15 @@ function loadState() {
             if (savedState.version !== defaultState.version) {
                 console.log(`Versión detectada (${savedState.version}) es antigua. Actualizando a ${defaultState.version}...`);
                 
-                // Actualizar tareas y recompensas (manteniendo transacciones y configuración)
+                // Actualizar tareas, recompensas y configuración nueva
                 savedState.tasks = defaultState.tasks;
                 savedState.rewards = defaultState.rewards;
+                
+                // Asegurar que exista settings.parentPin
+                if (!savedState.settings.parentPin) {
+                    savedState.settings.parentPin = defaultState.settings.parentPin;
+                }
+                
                 savedState.version = defaultState.version;
                 
                 // Guardar el estado actualizado inmediatamente
@@ -72,10 +79,83 @@ function saveState() {
 // Inicialización para pruebas
 console.log('Estado actual:', state);
 
+/* --- MODAL SYSTEM --- */
+const Modal = {
+    elements: {
+        backdrop: document.getElementById('app-modal'),
+        title: document.getElementById('modal-title'),
+        message: document.getElementById('modal-message'),
+        inputContainer: document.getElementById('modal-input-container'),
+        input: document.getElementById('modal-input'),
+        confirmBtn: document.getElementById('modal-confirm'),
+        cancelBtn: document.getElementById('modal-cancel')
+    },
+
+    init() {
+        // Re-bind elements in case DOM wasn't ready
+        this.elements.backdrop = document.getElementById('app-modal');
+        this.elements.title = document.getElementById('modal-title');
+        this.elements.message = document.getElementById('modal-message');
+        this.elements.inputContainer = document.getElementById('modal-input-container');
+        this.elements.input = document.getElementById('modal-input');
+        this.elements.confirmBtn = document.getElementById('modal-confirm');
+        this.elements.cancelBtn = document.getElementById('modal-cancel');
+    },
+
+    show(options) {
+        if (!this.elements.backdrop) this.init();
+        
+        return new Promise((resolve) => {
+            const { title = "Mensaje", message, type = "alert", placeholder = "" } = options;
+            
+            this.elements.title.textContent = title;
+            this.elements.message.textContent = message;
+            this.elements.backdrop.classList.remove('hidden');
+            
+            // Reset state
+            this.elements.inputContainer.classList.add('hidden');
+            this.elements.cancelBtn.classList.add('hidden');
+            this.elements.input.value = '';
+
+            const close = (value) => {
+                this.elements.backdrop.classList.add('hidden');
+                this.elements.confirmBtn.onclick = null;
+                this.elements.cancelBtn.onclick = null;
+                resolve(value);
+            };
+
+            if (type === "prompt") {
+                this.elements.inputContainer.classList.remove('hidden');
+                this.elements.cancelBtn.classList.remove('hidden');
+                this.elements.input.placeholder = placeholder;
+                setTimeout(() => this.elements.input.focus(), 100);
+                
+                this.elements.cancelBtn.onclick = () => close(null);
+                this.elements.confirmBtn.onclick = () => close(this.elements.input.value);
+            } else {
+                this.elements.confirmBtn.onclick = () => close(true);
+            }
+        });
+    },
+
+    alert(message, title = "Aviso") {
+        return this.show({ type: "alert", message, title });
+    },
+
+    prompt(message, title = "Ingreso Requerido") {
+        return this.show({ type: "prompt", message, title });
+    }
+};
+
 /* --- FUNCIONES CRÍTICAS (Lógica de Negocio) --- */
 
 function getBalance() {
-    return state.transactions.reduce((sum, tx) => sum + tx.points, 0);
+    // Solo contar transacciones aprobadas o sin estado (compatibilidad)
+    return state.transactions.reduce((sum, tx) => {
+        // Ignorar pendientes y rechazadas
+        if (tx.status === 'pending' || tx.status === 'rejected') return sum;
+        return sum + tx.points;
+    }, 0);
 }
 
 function getTodayScreenUsed() {
@@ -105,11 +185,9 @@ function enforceMaxBalance() {
 
 function completeTask(taskId) {
     const task = state.tasks.find(t => t.id === taskId && t.active);
-    if (!task) {
-        console.error(`Tarea ${taskId} no encontrada o inactiva`);
-        return;
-    }
+    if (!task) return;
 
+    // Crear transacción pendiente
     const tx = {
         id: crypto.randomUUID(),
         date: new Date().toISOString().split('T')[0],
@@ -118,14 +196,104 @@ function completeTask(taskId) {
         source: "task",
         taskId: taskId,
         description: task.name,
-        points: task.points
+        points: task.points,
+        status: 'pending' // NUEVO: Estado pendiente por defecto
     };
 
     state.transactions.push(tx);
-    enforceMaxBalance(); // Verificar tope de saldo
+    
+    // No sumamos saldo aún, pero guardamos el estado
     saveState();
-    console.log(`Tarea completada: ${task.name} (+${task.points} pts)`);
-    updateUI(); // Se implementará más adelante
+    updateUI();
+    
+    // Feedback visual simple
+    Modal.alert(`¡Tarea "${task.name}" enviada a revisión!`, "¡Excelente trabajo!");
+}
+
+function approveTask(transactionId) {
+    const tx = state.transactions.find(t => t.id === transactionId);
+    if (tx && tx.status === 'pending') {
+        // Verificar límite de saldo antes de aprobar
+        const currentBalance = getBalance();
+        const maxPoints = state.settings.maxPointBalance;
+        
+        if (currentBalance + tx.points > maxPoints) {
+            Modal.alert(`No se puede aprobar: Superaría el límite de ${maxPoints} puntos.`, "Límite Excedido");
+            return;
+        }
+
+        tx.status = 'approved';
+        saveState();
+        updateUI();
+    }
+}
+
+function rejectTask(transactionId) {
+    const tx = state.transactions.find(t => t.id === transactionId);
+    if (tx && tx.status === 'pending') {
+        tx.status = 'rejected';
+        saveState();
+        updateUI();
+    }
+}
+
+function approveAllTasks() {
+    const pending = state.transactions.filter(t => t.status === 'pending');
+    let approvedCount = 0;
+    
+    pending.forEach(tx => {
+        const currentBalance = getBalance(); // Recalcular en cada iteración
+        if (currentBalance + tx.points <= state.settings.maxPointBalance) {
+            tx.status = 'approved';
+            approvedCount++;
+        }
+    });
+    
+    if (approvedCount > 0) {
+        saveState();
+        updateUI();
+        Modal.alert(`${approvedCount} tareas aprobadas correctamente.`, "Aprobación Masiva");
+    } else if (pending.length > 0) {
+        Modal.alert("No se pudieron aprobar tareas por límite de saldo.", "Atención");
+    }
+}
+
+async function checkParentPin() {
+    const pin = await Modal.prompt("Ingresa el PIN de padres:", "Acceso Restringido");
+    if (pin === state.settings.parentPin) {
+        showParentView();
+    } else if (pin !== null) {
+        Modal.alert("PIN incorrecto", "Error de Acceso");
+    }
+}
+
+function showParentView() {
+    showView('parent');
+}
+
+function renderPendingTasks() {
+    const container = document.getElementById('pending-list');
+    if (!container) return;
+    
+    const pendingTxs = state.transactions.filter(t => t.status === 'pending');
+    
+    if (pendingTxs.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>No hay tareas pendientes de revisión 🎉</p></div>';
+        return;
+    }
+
+    container.innerHTML = pendingTxs.map(tx => `
+        <div class="card pending-card">
+            <div class="card-info">
+                <h3>${tx.description}</h3>
+                <p>+${tx.points} pts • ${tx.time.substring(0,5)}</p>
+            </div>
+            <div class="card-actions">
+                <button class="btn-action spend" style="background-color: #ff4757;" onclick="rejectTask('${tx.id}')">❌</button>
+                <button class="btn-action earn" onclick="approveTask('${tx.id}')">✅</button>
+            </div>
+        </div>
+    `).join('');
 }
 
 function redeemReward(rewardId, amount = null) {
@@ -143,7 +311,7 @@ function redeemReward(rewardId, amount = null) {
     
     // Validación 1: Saldo suficiente
     if (currentBalance < cost) {
-        alert(`No tienes suficientes puntos. Necesitas ${cost}, tienes ${currentBalance}.`);
+        Modal.alert(`No tienes suficientes puntos. Necesitas ${cost}, tienes ${currentBalance}.`, "Saldo Insuficiente");
         return;
     }
 
@@ -154,7 +322,7 @@ function redeemReward(rewardId, amount = null) {
         
         // Asumimos que cost = minutos (1 punto = 1 minuto)
         if (usedToday + cost > maxAllowed) {
-            alert(`Has alcanzado el límite diario de pantalla extra (${maxAllowed} min). Llevas ${usedToday} min. Solo puedes canjear ${maxAllowed - usedToday} más.`);
+            Modal.alert(`Has alcanzado el límite diario de pantalla extra (${maxAllowed} min). Llevas ${usedToday} min. Solo puedes canjear ${maxAllowed - usedToday} más.`, "Límite Diario");
             return;
         }
     }
@@ -181,26 +349,41 @@ function redeemReward(rewardId, amount = null) {
 const VIEWS = {
     today: document.getElementById('view-today'),
     rewards: document.getElementById('view-rewards'),
-    history: document.getElementById('view-history')
+    history: document.getElementById('view-history'),
+    parent: document.getElementById('view-parent')
 };
 
 function showView(viewName) {
     // Ocultar todas las vistas
-    Object.values(VIEWS).forEach(v => v.classList.add('hidden'));
+    Object.values(VIEWS).forEach(v => {
+        if(v) v.classList.add('hidden');
+    });
     
     // Mostrar vista seleccionada
-    VIEWS[viewName].classList.remove('hidden');
+    if (VIEWS[viewName]) {
+        VIEWS[viewName].classList.remove('hidden');
+    }
 
     // Actualizar botones de navegación
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.classList.remove('active');
-        if (btn.getAttribute('onclick').includes(viewName)) {
-            btn.classList.add('active');
+        const onclickAttr = btn.getAttribute('onclick');
+        
+        if (onclickAttr) {
+            // Coincidencia directa con el nombre de la vista
+            if (onclickAttr.includes(`'${viewName}'`)) {
+                btn.classList.add('active');
+            }
+            // Caso especial para la vista de padres (botón llama a checkParentPin)
+            else if (viewName === 'parent' && onclickAttr.includes('checkParentPin')) {
+                btn.classList.add('active');
+            }
         }
     });
 
     // Renderizar contenido específico si es necesario
     if (viewName === 'history') renderHistory();
+    if (viewName === 'parent') renderPendingTasks();
 }
 
 function updateUI() {

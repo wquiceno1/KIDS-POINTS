@@ -2,6 +2,29 @@
 
 Todas las modificaciones notables a este proyecto serán documentadas en este archivo.
 
+## [1.1.0] - 2025-12-15
+
+### ✨ Nuevas Funcionalidades
+- **Flujo de Aprobación Parental**:
+  - Las tareas completadas por el niño ahora entran en estado **"Pendiente"** y no suman puntos inmediatamente.
+  - Nueva sección **"Padres"** protegida por PIN (Por defecto: `1234`).
+  - Funcionalidad para **Aprobar** o **Rechazar** tareas individuales.
+  - Botón de **"Aprobar Todas"** para agilizar la revisión.
+  - Notificaciones visuales de estado de tareas.
+- **Sistema de Modales Personalizado**:
+  - Se reemplazaron las alertas nativas del navegador (`alert`, `prompt`) por ventanas modales integradas en el diseño.
+  - Animaciones suaves de entrada y salida.
+  - Mejor experiencia de usuario para ingreso de PIN y mensajes de confirmación.
+
+### 🎨 Interfaz y UX
+- **Mejoras en Navegación**:
+  - Se restauró el estilo visual original de la barra inferior.
+  - Integración armónica del cuarto botón "Padres".
+  - Corrección de visibilidad: La vista de padres ahora se cierra correctamente al navegar a otras secciones.
+- **Feedback Visual**:
+  - Tarjetas de tareas pendientes con borde amarillo distintivo.
+  - Mensajes claros al completar tareas o intentar acciones restringidas.
+
 ## [1.0.1] - 2025-12-15
 
 ### ⚡ Mejoras Técnicas
