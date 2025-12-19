@@ -14,8 +14,8 @@ const defaultState = {
     ],
     rewards: [
         { id: "screen", name: "Minutos pantalla", type: "screen-time", costPoints: 1, unit: "minute" },
-        { id: "comida", name: "Comida Chatarra", type: "experience", costPoints: 40, unit: "event" },
-        { id: "comida", name: "Un Helado", type: "experience", costPoints: 50, unit: "event" }
+        { id: "comida-chatarra", name: "Comida Chatarra", type: "experience", costPoints: 40, unit: "event" },
+        { id: "helado", name: "Un Helado", type: "experience", costPoints: 50, unit: "event" }
     ],
     transactions: [],
     settings: {
@@ -25,7 +25,7 @@ const defaultState = {
         currencyName: "puntos",
         locale: "es-CO",
         theme: "system",
-        parentPin: "2018" // PIN por defecto
+        parentPin: "1234" // PIN por defecto
     }
 };
 
@@ -122,6 +122,7 @@ const Modal = {
                 this.elements.backdrop.classList.add('hidden');
                 this.elements.confirmBtn.onclick = null;
                 this.elements.cancelBtn.onclick = null;
+                this.elements.input.onkeydown = null;
                 resolve(value);
             };
 
@@ -129,10 +130,21 @@ const Modal = {
                 this.elements.inputContainer.classList.remove('hidden');
                 this.elements.cancelBtn.classList.remove('hidden');
                 this.elements.input.placeholder = placeholder;
+                this.elements.input.enterKeyHint = 'done';
                 setTimeout(() => this.elements.input.focus(), 100);
                 
                 this.elements.cancelBtn.onclick = () => close(null);
                 this.elements.confirmBtn.onclick = () => close(this.elements.input.value);
+                this.elements.input.onkeydown = (event) => {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        close(this.elements.input.value);
+                    }
+                };
+            } else if (type === "confirm") {
+                this.elements.cancelBtn.classList.remove('hidden');
+                this.elements.cancelBtn.onclick = () => close(false);
+                this.elements.confirmBtn.onclick = () => close(true);
             } else {
                 this.elements.confirmBtn.onclick = () => close(true);
             }
@@ -427,6 +439,9 @@ function updateUI() {
     renderTasks();
     renderRewards();
     renderActiveRewards(); // Asegurar que se actualice también
+    if (VIEWS.parent && !VIEWS.parent.classList.contains('hidden')) {
+        renderPendingTasks();
+    }
     // renderHistory se llama bajo demanda al cambiar de vista para optimizar
 }
 
@@ -473,25 +488,26 @@ function renderTasks() {
     container.innerHTML = '';
 
     const today = new Date().toISOString().split('T')[0];
-    
-    // Obtener IDs de tareas completadas hoy (no reseteadas)
-    // Ya no necesitamos contar, solo saber si existe al menos una vez
-    const completedTaskIds = state.transactions
-        .filter(tx => tx.date === today && tx.source === "task" && !tx.isReset)
-        .map(tx => tx.taskId);
+    const todayTaskTxs = state.transactions.filter(tx => tx.date === today && tx.source === "task" && !tx.isReset);
 
     state.tasks.forEach(task => {
         if (!task.active) return;
 
-        const isCompleted = completedTaskIds.includes(task.id);
+        const taskTxs = todayTaskTxs
+            .filter(tx => tx.taskId === task.id)
+            .sort((a, b) => new Date(b.date + ' ' + b.time) - new Date(a.date + ' ' + a.time));
+        const latestTx = taskTxs[0];
+        const isPending = latestTx?.status === 'pending';
+        const isCompleted = latestTx && latestTx.status !== 'pending' && latestTx.status !== 'rejected';
         
         const card = document.createElement('div');
-        // Si está completada, siempre añadimos la clase completed (sin importar si es repetible o no)
-        card.className = `card task-card ${isCompleted ? 'completed' : ''}`;
+        card.className = `card task-card ${isCompleted ? 'completed' : ''} ${isPending ? 'pending' : ''}`;
         
         let actionButton = '';
-        if (isCompleted) {
-             actionButton = '<div class="completion-badge">✅ Hecho</div>';
+        if (isPending) {
+            actionButton = '<div class="pending-badge">⏳ Pendiente</div>';
+        } else if (isCompleted) {
+            actionButton = '<div class="completion-badge">✅ Aprobado</div>';
         } else {
              actionButton = `<button class="btn-action" onclick="completeTask('${task.id}')">Hecho</button>`;
         }
@@ -641,5 +657,3 @@ document.addEventListener('DOMContentLoaded', () => {
     updateUI();
     showView('today'); // Vista por defecto
 });
-
-

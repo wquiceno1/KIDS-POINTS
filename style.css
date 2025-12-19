@@ -141,6 +141,16 @@ h2 {
     opacity: 0.8;
 }
 
+.task-card.pending {
+    background-color: #fff3cd;
+    border: 1px solid #ff9800;
+    opacity: 0.9;
+}
+
+.task-card.pending .card-info h3 {
+    color: #7a4a00;
+}
+
 .task-card.completed .card-info h3 {
     text-decoration: line-through;
     color: #555;
@@ -154,6 +164,16 @@ h2 {
     background: white;
     border-radius: 15px;
     border: 1px solid var(--primary-color);
+}
+
+.pending-badge {
+    color: #ff9800;
+    font-weight: bold;
+    font-size: 0.9rem;
+    padding: 5px 10px;
+    background: white;
+    border-radius: 15px;
+    border: 1px solid #ff9800;
 }
 
 /* Recompensas */
